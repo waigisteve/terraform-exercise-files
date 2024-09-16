@@ -1,7 +1,3 @@
-provider "aws" {
-  region = var.aws_region  # Assuming `aws_region` is passed in as a variable
-}
-
 data "aws_ami" "app_ami" {
   most_recent = true
 
