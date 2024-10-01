@@ -1,3 +1,4 @@
+# Data source to get the latest Bitnami Tomcat AMI
 data "aws_ami" "app_ami" {
   most_recent = true
 
@@ -14,15 +15,17 @@ data "aws_ami" "app_ami" {
   owners = ["979382823631"] # Bitnami
 }
 
+# Data source to get the default VPC
 data "aws_vpc" "default" {
   default = true
 }
 
+# Module for the VPC
 module "blog_vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = "dev"
-  cidr = "10.0.0.0/16"
+  name            = "dev"
+  cidr            = "10.0.0.0/16"
 
   azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
@@ -33,17 +36,7 @@ module "blog_vpc" {
   }
 }
 
-resource "aws_instance" "blog" {
-  ami                    = data.aws_ami.app_ami.id
-  instance_type          = var.instance_type
-  vpc_security_group_ids = [module.blog_sg.security_group_id]
-  subnet_id              = module.blog_vpc.public_subnets[0]
-
-  tags = {
-    Name = "Learning Terraform"
-  }
-}
-
+# Security Group Module
 module "blog_sg" {
   source              = "terraform-aws-modules/security-group/aws"
   version             = "5.2.0"
@@ -55,6 +48,19 @@ module "blog_sg" {
   egress_cidr_blocks  = ["0.0.0.0/0"]
 }
 
+# EC2 Instance
+resource "aws_instance" "blog" {
+  ami                    = data.aws_ami.app_ami.id
+  instance_type          = var.instance_type
+  vpc_security_group_ids = [module.blog_sg.security_group_id]
+  subnet_id              = module.blog_vpc.public_subnets[0]
+
+  tags = {
+    Name = "Learning Terraform"
+  }
+}
+
+# ALB Module
 module "alb" {
   source = "terraform-aws-modules/alb/aws"
 
@@ -63,11 +69,13 @@ module "alb" {
   subnets         = module.blog_vpc.public_subnets
   security_groups = [module.blog_sg.security_group_id]
 
-  # Specify listeners with default actions
+  # Define listeners with default actions
   listeners = [
     {
       port     = 80
       protocol = "HTTP"
+
+      # Define the default action for this listener
       default_action = [
         {
           type = "forward"
