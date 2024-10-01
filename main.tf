@@ -1,7 +1,9 @@
+# providers.tf
 provider "aws" {
-  region = "us-west-2"  # Set your desired AWS region
+  region = "us-west-2"
 }
 
+# main.tf
 data "aws_ami" "app_ami" {
   most_recent = true
 
@@ -15,7 +17,7 @@ data "aws_ami" "app_ami" {
     values = ["hvm"]
   }
 
-  owners = ["979382823631"]  # Bitnami
+  owners = ["979382823631"] # Bitnami
 }
 
 data "aws_vpc" "default" {
@@ -33,7 +35,7 @@ module "_blog_vpc" {
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 
   tags = {
-    Terraform   = "true"
+    Terraform = "true"
     Environment = "dev"
   }
 }
@@ -53,17 +55,6 @@ module "blog_vpc" {
   }
 }
 
-module "blog_sg" {
-  source              = "terraform-aws-modules/security-group/aws"
-  version             = "5.2.0"
-  name                = "blog"
-  vpc_id              = module.blog_vpc.vpc_id
-  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-  egress_rules        = ["all-all"]
-  egress_cidr_blocks  = ["0.0.0.0/0"]
-}
-
 resource "aws_instance" "blog" {
   ami                    = data.aws_ami.app_ami.id
   instance_type          = var.instance_type
@@ -75,37 +66,37 @@ resource "aws_instance" "blog" {
   }
 }
 
+module "blog_sg" {
+  source              = "terraform-aws-modules/security-group/aws"
+  version             = "5.2.0"
+  name                = "blog"
+  vpc_id              = module.blog_vpc.vpc_id
+  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  egress_rules        = ["all-all"]
+  egress_cidr_blocks  = ["0.0.0.0/0"]
+}
+
 module "alb" {
   source = "terraform-aws-modules/alb/aws"
 
-  name            = "blog-alb"
-  vpc_id          = module.blog_vpc.vpc_id
-  subnets         = module.blog_vpc.public_subnets
-  security_groups = [module.blog_sg.security_group_id]
+  name               = "blog-alb"
+  vpc_id             = module.blog_vpc.vpc_id
+  subnets            = module.blog_vpc.public_subnets
+  security_groups    = module.blog_sg.security_group_id
 
-  # Define listeners with default actions
-  listeners = [
-    {
-      port     = 80
-      protocol = "HTTP"
+  # Configure listeners
+  listener {
+    port     = 80
+    protocol = "HTTP"
 
-      # Define the default action for this listener
-      default_action {
-        type = "forward"
-
-        target_group {
-          name     = "blog-target-group"  # Unique target group name
-          port     = 80
-          protocol = "HTTP"
-          target_type = "instance"
-          # Add the target instance here
-          target_id = aws_instance.blog.id
-        }
-      }
+    default_action {
+      type = "forward"
+      target_group_arn = module.alb_target_group.target_group_arn
     }
-  ]
+  }
 
-  # Define target groups for the ALB
+  # Configure target groups
   target_groups = {
     ex-instance = {
       name_prefix      = "blog"
@@ -114,6 +105,28 @@ module "alb" {
       target_type      = "instance"
       target_id        = aws_instance.blog.id
     }
+  }
+
+  tags = {
+    Environment = "Dev"
+    Project     = "Example"
+  }
+}
+
+module "alb_target_group" {
+  source = "terraform-aws-modules/alb/aws//modules/target-group"
+
+  name_prefix = "blog"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = module.blog_vpc.vpc_id
+
+  health_check {
+    healthy_threshold   = 2
+    interval            = 30
+    timeout             = 5
+    target              = "HTTP:80/"
+    unhealthy_threshold = 2
   }
 
   tags = {
