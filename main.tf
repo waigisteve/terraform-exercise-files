@@ -63,19 +63,21 @@ module "alb" {
   subnets         = module.blog_vpc.public_subnets
   security_groups = [module.blog_sg.security_group_id]
 
+  # Specify listeners with default actions
   listeners = [
     {
       port     = 80
       protocol = "HTTP"
       default_action = [
         {
-          type             = "forward"
+          type = "forward"
           target_group_index = 0
         }
       ]
     }
   ]
 
+  # Define target groups for the ALB
   target_groups = {
     ex-instance = {
       name_prefix      = "blog"
