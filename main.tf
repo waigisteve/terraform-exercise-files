@@ -71,7 +71,7 @@ module "blog_sg" {
 }
 
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = module.alb.this_lb_arn  # Correct reference to the ALB ARN
+  load_balancer_arn = module.alb.alb_arn  # Correct reference to the ALB ARN
   port              = 80
   protocol          = "HTTP"
 
@@ -87,7 +87,7 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener" "https" {
-  load_balancer_arn = module.alb.this_lb_arn  # Correct reference to the ALB ARN
+  load_balancer_arn = module.alb.alb_arn  # Correct reference to the ALB ARN
   port              = 443
   protocol          = "HTTPS"
 
