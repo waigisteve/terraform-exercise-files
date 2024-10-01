@@ -1,3 +1,15 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+    }
+  }
+}
+
+provider "aws" {
+  region  = "us-west-2"
+}
+
 data "aws_ami" "app_ami" {
   most_recent = true
 
@@ -49,7 +61,6 @@ module "blog_sg" {
   version             = "5.2.0"
   name                = "blog"
   vpc_id              = module.blog_vpc.vpc_id
-
   ingress_rules       = ["http-80-tcp", "https-443-tcp"]
   ingress_cidr_blocks = ["0.0.0.0/0"]
   egress_rules        = ["all-all"]
@@ -71,7 +82,7 @@ module "alb" {
       protocol = "HTTP"
       default_action = [
         {
-          type = "redirect"
+          type = "redirect"  # Redirect HTTP to HTTPS
           redirect = {
             port        = "443"
             protocol    = "HTTPS"
@@ -86,7 +97,7 @@ module "alb" {
       certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
       default_action = [
         {
-          type = "forward"
+          type = "forward"  # Forward to target group
           target_group_index = 0
         }
       ]
