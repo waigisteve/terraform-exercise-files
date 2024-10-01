@@ -94,7 +94,7 @@ module "alb" {
     Environment = "Dev"
     Project     = "Example"
   }
-}
+
 
 
 module "blog_sg" {
