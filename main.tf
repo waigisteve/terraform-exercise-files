@@ -74,12 +74,11 @@ module "alb" {
   subnets         = module.blog_vpc.public_subnets
   security_groups = [module.blog_sg.security_group_id]
 
-  # Specify listeners with default actions
   listeners = [
     {
       port     = 80
       protocol = "HTTP"
-      default_action {
+      default_action {  # Corrected: Proper block definition
         type = "redirect"
         redirect {
           port        = "443"
@@ -92,9 +91,9 @@ module "alb" {
       port     = 443
       protocol = "HTTPS"
       certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
-      default_action {
+      default_action {  # Corrected: Proper block definition
         type = "forward"
-        target_group_index = 0  # Ensure this points to the correct target group
+        target_group_index = 0
       }
     }
   ]
