@@ -79,23 +79,27 @@ module "alb" {
     {
       port     = 80
       protocol = "HTTP"
-      default_action {  # Corrected from `default_action =`
-        type = "redirect"
-        redirect {      # Corrected from `redirect =`
-          port        = "443"
-          protocol    = "HTTPS"
-          status_code = "HTTP_301"
+      default_action = [ # Changed from `default_action {` to `default_action = [`
+        {
+          type = "redirect"
+          redirect = {   # Corrected to `redirect = {`
+            port        = "443"
+            protocol    = "HTTPS"
+            status_code = "HTTP_301"
+          }
         }
-      }
+      ]
     },
     {
       port     = 443
       protocol = "HTTPS"
       certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
-      default_action {  # Corrected from `default_action =`
-        type = "forward"
-        target_group_index = 0
-      }
+      default_action = [ # Changed from `default_action {` to `default_action = [`
+        {
+          type = "forward"
+          target_group_index = 0
+        }
+      ]
     }
   ]
 
