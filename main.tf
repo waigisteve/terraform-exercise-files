@@ -42,7 +42,7 @@ module "blog_sg" {
   version             = "5.2.0"
   name                = "blog"
   vpc_id              = module.blog_vpc.vpc_id
-  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
+  ingress_rules       = ["http-80-tcp"]  # Removed https-443-tcp
   ingress_cidr_blocks = ["0.0.0.0/0"]
   egress_rules        = ["all-all"]
   egress_cidr_blocks  = ["0.0.0.0/0"]
@@ -63,26 +63,12 @@ module "alb" {
   source = "terraform-aws-modules/alb/aws"
   version = "~> 6.0"
 
-  name    = "blog-alb"
-  load_balancer_type = "application"
+  name                = "blog-alb"
+  load_balancer_type  = "application"
 
-  vpc_id           = module.blog_vpc.vpc_id
-  subnets          = module.blog_vpc.public_subnets
-  security_groups  = [module.blog_sg.security_group_id]
-
-  # Ingress and Egress Rules are now defined directly in the security group module
-
-  listeners = {
-    ex-http-https-redirect = {
-      port     = 80
-      protocol = "HTTP"
-      redirect = {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-  }
+  vpc_id             = module.blog_vpc.vpc_id
+  subnets            = module.blog_vpc.public_subnets
+  security_groups    = [module.blog_sg.security_group_id]
 
   target_groups = {
     ex-instance = {
@@ -106,23 +92,7 @@ resource "aws_lb_listener" "http" {
   protocol          = "HTTP"
 
   default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = module.alb.load_balancer_arn  # Correct reference to the ALB ARN
-  port              = 443
-  protocol          = "HTTPS"
-
-  default_action {
-    type             = "forward"
+    type = "forward"
     target_group_arn = module.alb.target_groups.ex-instance.arn  # Ensure correct reference to the target group ARN
   }
 }
