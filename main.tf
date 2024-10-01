@@ -1,4 +1,7 @@
-# Data source to get the latest Bitnami Tomcat AMI
+provider "aws" {
+  region = "us-west-2"  # Set your desired AWS region
+}
+
 data "aws_ami" "app_ami" {
   most_recent = true
 
@@ -12,20 +15,34 @@ data "aws_ami" "app_ami" {
     values = ["hvm"]
   }
 
-  owners = ["979382823631"] # Bitnami
+  owners = ["979382823631"]  # Bitnami
 }
 
-# Data source to get the default VPC
 data "aws_vpc" "default" {
   default = true
 }
 
-# Module for the VPC
+module "_blog_vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+
+  name = "dev"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
+
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+  tags = {
+    Terraform   = "true"
+    Environment = "dev"
+  }
+}
+
 module "blog_vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name            = "dev"
-  cidr            = "10.0.0.0/16"
+  name = "dev"
+  cidr = "10.0.0.0/16"
 
   azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
@@ -36,7 +53,6 @@ module "blog_vpc" {
   }
 }
 
-# Security Group Module
 module "blog_sg" {
   source              = "terraform-aws-modules/security-group/aws"
   version             = "5.2.0"
@@ -48,7 +64,6 @@ module "blog_sg" {
   egress_cidr_blocks  = ["0.0.0.0/0"]
 }
 
-# EC2 Instance
 resource "aws_instance" "blog" {
   ami                    = data.aws_ami.app_ami.id
   instance_type          = var.instance_type
@@ -60,7 +75,6 @@ resource "aws_instance" "blog" {
   }
 }
 
-# ALB Module
 module "alb" {
   source = "terraform-aws-modules/alb/aws"
 
@@ -76,12 +90,18 @@ module "alb" {
       protocol = "HTTP"
 
       # Define the default action for this listener
-      default_action = [
-        {
-          type = "forward"
-          target_group_index = 0
+      default_action {
+        type = "forward"
+
+        target_group {
+          name     = "blog-target-group"  # Unique target group name
+          port     = 80
+          protocol = "HTTP"
+          target_type = "instance"
+          # Add the target instance here
+          target_id = aws_instance.blog.id
         }
-      ]
+      }
     }
   ]
 
