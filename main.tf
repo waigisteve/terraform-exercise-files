@@ -2,12 +2,15 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
+      version = "~> 4.0"  # Adjust the version as necessary
     }
   }
+
+  required_version = ">= 1.0"
 }
 
 provider "aws" {
-  region  = "us-west-2"
+  region = "us-west-2"
 }
 
 data "aws_ami" "app_ami" {
@@ -26,10 +29,6 @@ data "aws_ami" "app_ami" {
   owners = ["979382823631"] # Bitnami
 }
 
-data "aws_vpc" "default" {
-  default = true
-}
-
 module "blog_vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
@@ -45,17 +44,6 @@ module "blog_vpc" {
   }
 }
 
-resource "aws_instance" "blog" {
-  ami                    = data.aws_ami.app_ami.id
-  instance_type          = var.instance_type
-  vpc_security_group_ids = [module.blog_sg.security_group_id]
-  subnet_id              = module.blog_vpc.public_subnets[0]
-
-  tags = {
-    Name = "Learning Terraform"
-  }
-}
-
 module "blog_sg" {
   source              = "terraform-aws-modules/security-group/aws"
   version             = "5.2.0"
@@ -65,6 +53,17 @@ module "blog_sg" {
   ingress_cidr_blocks = ["0.0.0.0/0"]
   egress_rules        = ["all-all"]
   egress_cidr_blocks  = ["0.0.0.0/0"]
+}
+
+resource "aws_instance" "blog" {
+  ami                    = data.aws_ami.app_ami.id
+  instance_type          = var.instance_type
+  vpc_security_group_ids = [module.blog_sg.security_group_id]
+  subnet_id              = module.blog_vpc.public_subnets[0]
+
+  tags = {
+    Name = "Learning Terraform"
+  }
 }
 
 module "alb" {
@@ -126,4 +125,11 @@ module "alb" {
     Environment = "Dev"
     Project     = "Example"
   }
+}
+
+# Variable for instance type
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t2.micro"  # Adjust default as necessary
 }
