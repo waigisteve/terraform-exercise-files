@@ -70,7 +70,7 @@ module "alb" {
       default_action = [
         {
           type             = "forward"
-          target_group_arn = module.alb_target_group.target_group_arn
+          target_group_index = 0
         }
       ]
     }
