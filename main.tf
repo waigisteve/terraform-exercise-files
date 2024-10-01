@@ -82,7 +82,7 @@ module "alb" {
       protocol = "HTTP"
       default_action = [
         {
-          type = "redirect"  # Redirect HTTP to HTTPS
+          type = "redirect"
           redirect = {
             port        = "443"
             protocol    = "HTTPS"
@@ -97,7 +97,7 @@ module "alb" {
       certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
       default_action = [
         {
-          type = "forward"  # Forward to target group
+          type = "forward"
           target_group_index = 0
         }
       ]
@@ -111,7 +111,7 @@ module "alb" {
       protocol         = "HTTP"
       port             = 80
       target_type      = "instance"
-      target_id        = aws_instance.blog.id  # Ensure this is accurate
+      target_id        = aws_instance.blog.id
       health_check = {
         path                = "/"
         interval            = 30
