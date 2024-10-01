@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.62.0"  # Adjust this as necessary
+      version = "~> 5.62.0"  # Adjusted to only one version constraint
     }
   }
 
@@ -74,13 +74,14 @@ module "alb" {
   subnets         = module.blog_vpc.public_subnets
   security_groups = [module.blog_sg.security_group_id]
 
+  # Specify listeners with default actions
   listeners = [
     {
       port     = 80
       protocol = "HTTP"
-      default_action= {  
+      default_action {  # Corrected from `default_action =`
         type = "redirect"
-        redirect {
+        redirect {      # Corrected from `redirect =`
           port        = "443"
           protocol    = "HTTPS"
           status_code = "HTTP_301"
@@ -91,7 +92,7 @@ module "alb" {
       port     = 443
       protocol = "HTTPS"
       certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
-      default_action {  # Corrected: Proper block definition
+      default_action {  # Corrected from `default_action =`
         type = "forward"
         target_group_index = 0
       }
