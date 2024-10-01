@@ -18,29 +18,11 @@ data "aws_vpc" "default" {
   default = true
 }
 
-module "_blog_vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-
-  name = "dev"
-  cidr = "10.0.0.0/16"
-
-  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
-
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-
-
-  tags = {
-    Terraform = "true"
-    Environment = "dev"
-  }
-}
-
 module "blog_vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = "dev"
-  cidr = "10.0.0.0/16"
-
+  name            = "dev"
+  cidr            = "10.0.0.0/16"
   azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 
@@ -62,18 +44,15 @@ resource "aws_instance" "blog" {
 }
 
 module "alb" {
-  source = "terraform-aws-modules/alb/aws"
+  source  = "terraform-aws-modules/alb/aws"
   version = "~> 6.0"
 
-  name    = "blog-alb"
-  
-  load_balancer_type = "application"
+  name                = "blog-alb"
+  load_balancer_type  = "application"
+  vpc_id              = module.blog_vpc.vpc_id
+  subnets             = module.blog_vpc.public_subnets
+  security_groups     = [module.blog_sg.security_group_id]
 
-  vpc_id           = module.blog_vpc_id
-  subnets          = module.blog_vpc.public_subnets
-  security_groups  = module.blog-sg.security_group_id
-
-  # Security Group
   security_group_ingress_rules = {
     all_http = {
       from_port   = 80
@@ -90,6 +69,7 @@ module "alb" {
       cidr_ipv4   = "0.0.0.0/0"
     }
   }
+
   security_group_egress_rules = {
     all = {
       ip_protocol = "-1"
@@ -107,14 +87,15 @@ module "alb" {
         status_code = "HTTP_301"
       }
     }
- 
+  }
+
   target_groups = {
     ex-instance = {
-      name_prefix      = "blog"
-      protocol         = "HTTP"
-      port             = 80
-      target_type      = "instance"
-      target_id        = aws_instance.blog.id
+      name_prefix = "blog"
+      protocol    = "HTTP"
+      port        = 80
+      target_type = "instance"
+      target_id   = aws_instance.blog.id
     }
   }
 
