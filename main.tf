@@ -18,21 +18,6 @@ data "aws_vpc" "default" {
   default = true
 }
 
-module "_blog_vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-
-  name = "dev"
-  cidr = "10.0.0.0/16"
-
-  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-
-  tags = {
-    Terraform   = "true"
-    Environment = "dev"
-  }
-}
-
 module "blog_vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
@@ -78,11 +63,16 @@ module "alb" {
   subnets         = module.blog_vpc.public_subnets
   security_groups = [module.blog_sg.security_group_id]
 
-  http_tcp_listeners = [
+  listeners = [
     {
-      port                = 80
-      protocol            = "HTTP"
-      target_group_index  = 0
+      port     = 80
+      protocol = "HTTP"
+      default_action = [
+        {
+          type             = "forward"
+          target_group_arn = module.alb_target_group.target_group_arn
+        }
+      ]
     }
   ]
 
