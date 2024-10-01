@@ -1,9 +1,3 @@
-# main.tf
-
-provider "aws" {
-  region = "us-west-2"  # Specify your AWS region
-}
-
 data "aws_ami" "app_ami" {
   most_recent = true
 
@@ -24,6 +18,23 @@ data "aws_vpc" "default" {
   default = true
 }
 
+module "_blog_vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+
+  name = "dev"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
+
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+
+  tags = {
+    Terraform = "true"
+    Environment = "dev"
+  }
+}
+
 module "blog_vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
@@ -37,17 +48,6 @@ module "blog_vpc" {
     Terraform   = "true"
     Environment = "dev"
   }
-}
-
-module "blog_sg" {
-  source              = "terraform-aws-modules/security-group/aws"
-  version             = "5.2.0"
-  name                = "blog"
-  vpc_id              = module.blog_vpc.vpc_id
-  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
-  ingress_cidr_blocks = ["0.0.0.0/0"]
-  egress_rules        = ["all-all"]
-  egress_cidr_blocks  = ["0.0.0.0/0"]
 }
 
 resource "aws_instance" "blog" {
@@ -65,12 +65,37 @@ module "alb" {
   source = "terraform-aws-modules/alb/aws"
   version = "~> 6.0"
 
-  name              = "blog-alb"
+  name    = "blog-alb"
+  
   load_balancer_type = "application"
 
-  vpc_id           = module.blog_vpc.vpc_id
+  vpc_id           = module.blog_vpc_id
   subnets          = module.blog_vpc.public_subnets
-  security_groups  = [module.blog_sg.security_group_id]
+  security_groups  = module.blog-sg.security_group_id
+
+  # Security Group
+  security_group_ingress_rules = {
+    all_http = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      description = "HTTP web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+    all_https = {
+      from_port   = 443
+      to_port     = 443
+      ip_protocol = "tcp"
+      description = "HTTPS web traffic"
+      cidr_ipv4   = "0.0.0.0/0"
+    }
+  }
+  security_group_egress_rules = {
+    all = {
+      ip_protocol = "-1"
+      cidr_ipv4   = "10.0.0.0/16"
+    }
+  }
 
   listeners = {
     ex-http-https-redirect = {
@@ -82,7 +107,7 @@ module "alb" {
         status_code = "HTTP_301"
       }
     }
-  }
+ 
 
   target_groups = {
     ex-instance = {
@@ -95,34 +120,18 @@ module "alb" {
   }
 
   tags = {
-    Environment = "Dev"
+    Environment = "Development"
     Project     = "Example"
   }
 }
 
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = module.alb.load_balancer_arn  # Correct reference to the ALB ARN
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
-  }
-}
-
-resource "aws_lb_listener" "https" {
-  load_balancer_arn = module.alb.load_balancer_arn  # Correct reference to the ALB ARN
-  port              = 443
-  protocol          = "HTTPS"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = module.alb.target_groups.ex-instance.arn  # Ensure correct reference to the target group ARN
-  }
+module "blog_sg" {
+  source              = "terraform-aws-modules/security-group/aws"
+  version             = "5.2.0"
+  name                = "blog"
+  vpc_id              = module.blog_vpc.vpc_id
+  ingress_rules       = ["http-80-tcp", "https-443-tcp"]
+  ingress_cidr_blocks = ["0.0.0.0/0"]
+  egress_rules        = ["all-all"]
+  egress_cidr_blocks  = ["0.0.0.0/0"]
 }
