@@ -78,7 +78,7 @@ module "alb" {
     {
       port     = 80
       protocol = "HTTP"
-      default_action {  
+      default_action= {  
         type = "redirect"
         redirect {
           port        = "443"
